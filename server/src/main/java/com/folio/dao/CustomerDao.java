@@ -20,21 +20,26 @@ public class CustomerDao {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public void createCustomer(String fname, String sname, String email_address, String password_) {
+    public void createCustomer(Customer customer) {
         // Validate email format
-        if (email_address == null || !email_address.contains("@")) {
+        String forename = customer.getForename();
+        String surname = customer.getSurname();
+        String email = customer.getEmail();
+        String password_ = customer.getPassword_();
+
+        if (email == null || !email.contains("@")) {
             throw new IllegalArgumentException("Invalid email format");
         }
-    
+
         // Check for empty fields
-        if (fname == null || fname.isEmpty()) {
+        if (forename == null || forename.isEmpty()) {
             throw new IllegalArgumentException("First name is required");
         }
-    
-        if (sname == null || sname.isEmpty()) {
+
+        if (surname == null || surname.isEmpty()) {
             throw new IllegalArgumentException("Last name is required");
         }
-    
+
         // Fetch the max customer ID and increment by 1 to create the new ID
         int lastCustomerId;
         try {
@@ -43,13 +48,13 @@ public class CustomerDao {
             // Handle the case when there are no existing customers
             lastCustomerId = 0;
         }
-    
+
         int newCustomerId = ++lastCustomerId;
-    
-        String sql = "INSERT INTO customer (id, fname, sname, email_address, fline_address, sline_address, city, post_code, password, card_num, cvv) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        
-        jdbcTemplate.update(sql, newCustomerId, fname, sname, email_address, null, null, null, null, password_, null, null);
+
+        String sql = "INSERT INTO customer (id, forename, surname, email, password_) "
+                + "VALUES (?, ?, ?, ?, ?)";
+
+        jdbcTemplate.update(sql, newCustomerId, forename, surname, email, password_);
     }
 
     private int getLastCustomerId() {
@@ -67,9 +72,9 @@ public class CustomerDao {
         return jdbcTemplate.queryForObject(sql, new CustomerMapper(), id);
     }
 
-    public Customer getCustomerByEmail(String email_address) {
-        String sql = "SELECT * FROM customer WHERE email_address = ?";
-        return jdbcTemplate.queryForObject(sql, new CustomerMapper(), email_address);
+    public Customer getCustomerByEmail(String email) {
+        String sql = "SELECT * FROM customer WHERE email = ?";
+        return jdbcTemplate.queryForObject(sql, new CustomerMapper(), email);
     }
 
     public List<Customer> getAllCustomers() {
@@ -78,13 +83,10 @@ public class CustomerDao {
     }
 
     public void updateCustomer(Customer customer) {
-        String sql = "UPDATE customer SET fname = ?, sname = ?, email_address = ?, fline_address = ?, " +
-                "sline_address = ?, city = ?, post_code = ?, password_ = ?, card_num = ?, cvv = ? " +
-                "WHERE id = ?";
-        jdbcTemplate.update(sql, customer.getFname(), customer.getSname(), customer.getEmail_address(),
-                customer.getFline_address(), customer.getSline_address(), customer.getCity(),
-                customer.getPost_code(), customer.getPassword(), customer.getCard_num(), customer.getCvv(),
-                customer.getId());
+        String sql = "UPDATE customer SET forename = ?, surname = ?, email = ?, " +
+                "password_ = ? WHERE id = ?";
+        jdbcTemplate.update(sql, customer.getForename(), customer.getSurname(), customer.getEmail(),
+                customer.getPassword_(), customer.getId());
     }
 
     public void deleteCustomer(int id) {
@@ -92,11 +94,11 @@ public class CustomerDao {
         jdbcTemplate.update(sql, id);
     }
 
-    public Customer authenticateCustomer(String email_address, String password) {
-        String sql = "SELECT * FROM customer WHERE email_address = ? AND password_ = ?";
-        
+    public Customer authenticateCustomer(String email, String password_) {
+        String sql = "SELECT * FROM customer WHERE email = ? AND password_ = ?";
+
         try {
-            return jdbcTemplate.queryForObject(sql, new CustomerMapper(), email_address, password);
+            return jdbcTemplate.queryForObject(sql, new CustomerMapper(), email, password_);
         } catch (EmptyResultDataAccessException ex) {
             return null; // Customer not found or incorrect credentials
         }
@@ -107,16 +109,10 @@ public class CustomerDao {
         public Customer mapRow(ResultSet resultSet, int i) throws SQLException {
             Customer customer = new Customer();
             customer.setId(resultSet.getInt("id"));
-            customer.setFname(resultSet.getString("fname"));
-            customer.setSname(resultSet.getString("sname"));
-            customer.setEmail_address(resultSet.getString("email_address"));
-            customer.setFline_address(resultSet.getString("fline_address"));
-            customer.setSline_address(resultSet.getString("sline_address"));
-            customer.setCity(resultSet.getString("city"));
-            customer.setPost_code(resultSet.getString("post_code"));
-            customer.setPassword(resultSet.getString("password_"));
-            customer.setCard_num(resultSet.getString("card_num"));
-            customer.setCvv(resultSet.getString("cvv"));
+            customer.setForename(resultSet.getString("forename"));
+            customer.setSurname(resultSet.getString("surname"));
+            customer.setEmail(resultSet.getString("email"));
+            customer.setPassword_(resultSet.getString("password_"));
             return customer;
         }
     }

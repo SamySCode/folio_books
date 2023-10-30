@@ -1,13 +1,18 @@
 package com.folio.dao;
 
 import com.folio.model.CustomerOrder;
+
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public class CustomerOrderDao {
@@ -24,13 +29,13 @@ public class CustomerOrderDao {
         int newCustomerOrderId = lastCustomerOrderId + 1;
 
         // Prepare the SQL INSERT statement
-        String sql = "INSERT INTO customer_order (id, customer_id, status) " +
+        String sql = "INSERT INTO customerOrder (id, customerId, status_) " +
                 "VALUES (?, ?, ?, ?)";
-        jdbcTemplate.update(sql, newCustomerOrderId, customerOrder.getCustomer_id(), customerOrder.getStatus_());
+        jdbcTemplate.update(sql, newCustomerOrderId, customerOrder.getCustomerId(), customerOrder.getStatus_());
     }
 
     private int getLastCustomerOrderId() {
-        String sql = "SELECT MAX(id) FROM customer_order";
+        String sql = "SELECT MAX(id) FROM customerOrder";
         Integer maxId = jdbcTemplate.queryForObject(sql, Integer.class);
         if (maxId == null) {
             return 0;
@@ -40,27 +45,33 @@ public class CustomerOrderDao {
     }
 
     public CustomerOrder getCustomerOrderById(int id) {
-        String sql = "SELECT * FROM customer_order WHERE id = ?";
+        String sql = "SELECT * FROM customerOrder WHERE id = ?";
         return jdbcTemplate.queryForObject(sql, new CustomerOrderMapper(), id);
     }
 
     public List<CustomerOrder> getCustomerOrdersByCustomerId(int customerId) {
-        String sql = "SELECT * FROM customer_order WHERE customer_id = ?";
+        String sql = "SELECT * FROM customerOrder WHERE customerId = ?";
         return jdbcTemplate.query(sql, new CustomerOrderMapper(), customerId);
     }
 
     public CustomerOrder getBasketCustomerOrdersByCustomerId(int customerId) {
-        String sql = "SELECT * FROM customer_order WHERE customer_id = ? AND status_ = ?";
+        try {
+            String sql = "SELECT * FROM customerOrder WHERE customerId = ? AND status_ = ?";
         return jdbcTemplate.queryForObject(sql, new CustomerOrderMapper(), customerId, "Basket");
+        }catch(EmptyResultDataAccessException e) {
+            return null;
+        }catch(IncorrectResultSizeDataAccessException e) {
+            return null;
+        }
     }
 
     public void updateCustomerOrder(CustomerOrder customerOrder) {
-        String sql = "UPDATE customer_order SET customer_id = ?, status = ? WHERE id = ?";
-        jdbcTemplate.update(sql, customerOrder.getCustomer_id(), customerOrder.getStatus_(), customerOrder.getId());
+        String sql = "UPDATE customerOrder SET customerId = ?, status_ = ? WHERE id = ?";
+        jdbcTemplate.update(sql, customerOrder.getCustomerId(), customerOrder.getStatus_(), customerOrder.getId());
     }
 
     public void deleteCustomerOrder(int id) {
-        String sql = "DELETE FROM customer_order WHERE id = ?";
+        String sql = "DELETE FROM customerOrder WHERE id = ?";
         jdbcTemplate.update(sql, id);
     }
 
@@ -69,8 +80,8 @@ public class CustomerOrderDao {
         public CustomerOrder mapRow(ResultSet resultSet, int i) throws SQLException {
             CustomerOrder customerOrder = new CustomerOrder();
             customerOrder.setId(resultSet.getInt("id"));
-            customerOrder.setCustomer_id(resultSet.getInt("customer_id"));
-            customerOrder.setStatus_(resultSet.getString("status"));
+            customerOrder.setCustomer_id(resultSet.getInt("customerId"));
+            customerOrder.setStatus_(resultSet.getString("status_"));
             return customerOrder;
         }
     }

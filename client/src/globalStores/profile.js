@@ -9,13 +9,17 @@ export const useProfileStore = create(
       registerError: null,
       registerUser: async (forename, surname, email, password) => {
         try {
-          const newUser = { forename, surname, email, password };
+          const newUser = { forename, surname, email, password_: password };
 
           const response = await fetch("http://localhost:8080/register", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify(newUser),
           });
+
+          console.log(response);
 
           if (response.status === 200) {
             set({
@@ -25,7 +29,7 @@ export const useProfileStore = create(
               registerError: null,
             });
           } else {
-            const message = response.json();
+            const message = await response.json();
 
             set({
               user: null,
@@ -45,24 +49,26 @@ export const useProfileStore = create(
       },
       signInUser: async (email, password) => {
         try {
-          const response = await fetch("http://localhost:8000/users");
-          const users = await response.json();
+          const response = await fetch("http://localhost:8080/sign-in", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email,
+              password_: password,
+            }),
+          });
 
-          const foundUser = users.find(
-            (user) => user.email === email && user.password === password
-          );
+          if (response.status === 200) {
+            const foundUser = await response.json();
 
-          if (foundUser) {
             set({
               user: foundUser,
               signedIn: true,
               loginError: null,
               registerError: null,
             });
-          } else {
-            throw new Error(
-              "Invalid email or password. Try registering instead."
-            );
           }
         } catch (error) {
           set({
@@ -73,14 +79,30 @@ export const useProfileStore = create(
           });
         }
       },
-      addBookToBasket: (book) => {
-        const user = get().user;
-        const { basket } = user;
-        const updatedBasket = [...basket, book];
-        user.basket = updatedBasket;
-        console.log({ user });
+      addBookToBasket: async (bookId) => {
+        const userId = get().user.id;
 
-        set({ user });
+        const response = await fetch(
+          "http://localhost:8080/add-to-basket?" +
+            new URLSearchParams({
+              customerId: userId,
+              bookId,
+            }),
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const message = await response.json();
+
+        if (response.status === 200) {
+          console.log(message);
+        } else {
+          console.error(message);
+        }
       },
       signOutUser: () => {
         set({

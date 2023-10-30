@@ -8,14 +8,14 @@ import com.folio.model.OrderLine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
 @CrossOrigin
-@RestController //should be sent back as JSON
+@RestController // should be sent back as JSON
 public class CustomerController {
 
     @Autowired
@@ -27,34 +27,22 @@ public class CustomerController {
     @Autowired
     OrderLineDao orderLineDao;
 
-    @GetMapping("/get")
-    public ResponseEntity<String> getTestJson() {
-        String jsonResponse = "{\"message\": \"This is a test JSON response.\"}";
-
-        return ResponseEntity.ok(jsonResponse);
-    }
-
     @PostMapping("/sign-in")
-    public ResponseEntity<Map<String, Object>> signInCustomer(@RequestParam String email, @RequestParam String password) {
+    public ResponseEntity<Map<String, Object>> signInCustomer(@RequestBody Customer customer) {
         try {
-            Customer authenticatedCustomer = customerDao.authenticateCustomer(email, password);
+            // get specific JSON values from request
+            String email = customer.getEmail();
+            String password_ = customer.getPassword_();
+
+            // check if Customer exists in database
+            Customer authenticatedCustomer = customerDao.authenticateCustomer(email, password_);
 
             if (authenticatedCustomer != null) {
-                List<OrderLine> basketOrderLines = orderLineDao.getBasket(authenticatedCustomer.getId());
-                List<Map<String, Object>> books = new ArrayList<>();
-
-                for (OrderLine orderLine : basketOrderLines) {
-                    Map<String, Object> bookInfo = new HashMap<>();
-                    bookInfo.put("book_id", orderLine.getBook_id());
-                    bookInfo.put("quantity", orderLine.getQuantity());
-                    books.add(bookInfo);
-                }
+                // retrieve customer orders in basket
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("id", authenticatedCustomer.getId());
-                response.put("fname", authenticatedCustomer.getFname());
-                response.put("books", books);
-
+                response.put("forename", authenticatedCustomer.getForename());                
                 return ResponseEntity.ok(response);
 
             } else {
@@ -63,29 +51,22 @@ public class CustomerController {
                         .body(Collections.singletonMap("error", "Sign-in failed"));
             }
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("error", "Sign-in failed"));
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "Sign-in failed"));
         }
     }
 
-
     @PostMapping("/register")
-    public ResponseEntity<String> registerCustomer(@Validated @RequestParam String forename, @RequestParam String surname, @RequestParam String email, @RequestParam String password) {
-        // Registration logic
+    public ResponseEntity<Map<String, Object>> registerCustomer(@RequestBody Customer customer) {
         try {
-            Customer customer = new Customer();
-            customer.setFname(forename);
-            customer.setSname(surname);
-            customer.setEmail_address(email);
-            customer.setPassword(password);
-            customerDao.createCustomer(forename, surname, email, password); // Create Customer method call
-            return ResponseEntity.ok("Registration successful");
+            customerDao.createCustomer(customer);
+            return ResponseEntity.status(HttpStatus.OK).body(Collections.singletonMap("Message", "Registration successful"));
         } catch (DuplicateKeyException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already registered");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Collections.singletonMap("Error", "Email already registered"));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Registration failed");
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.singletonMap("Error", "Registration failed"));
         }
     }
 }
-
-
-    
